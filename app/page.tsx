@@ -1,65 +1,110 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import { useState } from "react";
+import { useOrders, Order } from "../src/hooks/useOrders";
+
+const MENU = [
+  { id: 1, name: "X-Burger", price: 18.0 },
+  { id: 2, name: "Batata Frita", price: 12.0 },
+  { id: 3, name: "Refrigerante LATA", price: 6.0 },
+];
+
+export default function CardapioPage() {
+  const { orders, saveOrders } = useOrders();
+  const [clientName, setClientName] = useState("");
+  const [cart, setCart] = useState<{ [key: number]: number }>({});
+
+  const handleQuantity = (id: number, delta: number) => {
+    setCart((prev) => {
+      const next = (prev[id] || 0) + delta;
+      if (next <= 0) {
+        const { [id]: _, ...rest } = prev;
+        return rest;
+      }
+      return { ...prev, [id]: next };
+    });
+  };
+
+  const handleSendOrder = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!clientName.trim() || Object.keys(cart).length === 0) return;
+
+    const items = Object.entries(cart).map(([itemId, qty]) => {
+      const item = MENU.find((m) => m.id === Number(itemId));
+      return { id: Number(itemId), name: item?.name || "", quantity: qty };
+    });
+
+    const newOrder: Order = {
+      id: Math.random().toString(36).substring(2, 9),
+      clientName,
+      items,
+      status: "Pendente",
+      createdAt: new Date().toLocaleTimeString("pt-BR", {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+    };
+
+    saveOrders([...orders, newOrder]);
+    setClientName("");
+    setCart({});
+    alert("Pedido enviado com sucesso para a cozinha! 🎉");
+  };
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
+    <div className="p-6 max-w-md mx-auto space-y-6">
+      <h1 className="text-2xl font-bold text-orange-600">🍔 Faça seu Pedido</h1>
+
+      <form onSubmit={handleSendOrder} className="space-y-4">
+        {MENU.map((item) => (
+          <div
+            key={item.id}
+            className="flex justify-between items-center p-4 border rounded-xl shadow-sm bg-white"
+          >
+            <div>
+              <p className="font-semibold text-gray-800">{item.name}</p>
+              <p className="text-sm text-gray-500">
+                R$ {item.price.toFixed(2)}
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => handleQuantity(item.id, -1)}
+                className="w-8 h-8 bg-gray-100 rounded-full font-bold"
+              >
+                -
+              </button>
+              <span className="w-4 text-center font-medium">
+                {cart[item.id] || 0}
+              </span>
+              <button
+                type="button"
+                onClick={() => handleQuantity(item.id, 1)}
+                className="w-8 h-8 bg-orange-100 text-orange-600 rounded-full font-bold"
+              >
+                +
+              </button>
+            </div>
+          </div>
+        ))}
+
+        <input
+          type="text"
+          placeholder="Digite seu nome"
+          required
+          value={clientName}
+          onChange={(e) => setClientName(e.target.value)}
+          className="w-full p-3 border rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+
+        <button
+          type="submit"
+          className="w-full bg-orange-500 hover:bg-orange-600 text-white p-4 rounded-xl font-bold transition-colors shadow-md"
+        >
+          Confirmar e Enviar
+        </button>
+      </form>
     </div>
   );
 }
