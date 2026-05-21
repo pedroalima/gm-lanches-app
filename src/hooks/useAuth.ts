@@ -13,7 +13,7 @@ export function useAuth() {
 
   const login = (username: string, password: string) => {
     // Altere aqui suas credenciais se quiser
-    if (username === "admin" && password === "cozinha123") {
+    if (username === "admin" && password === "1234") {
       sessionStorage.setItem("cozinha_auth", "true");
       setIsAuthenticated(true);
       setError("");

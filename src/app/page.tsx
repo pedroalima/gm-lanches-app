@@ -1,18 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { useOrders, Order } from "../src/hooks/useOrders";
-
-const MENU = [
-  { id: 1, name: "X-Burger", price: 18.0 },
-  { id: 2, name: "Batata Frita", price: 12.0 },
-  { id: 3, name: "Refrigerante LATA", price: 6.0 },
-];
+import { useOrders, Order } from "../hooks/useOrders";
+import { useMenu } from "../hooks/useMenu";
 
 export default function CardapioPage() {
   const { orders, saveOrders } = useOrders();
   const [clientName, setClientName] = useState("");
   const [cart, setCart] = useState<{ [key: number]: number }>({});
+  const { menu } = useMenu();
 
   const handleQuantity = (id: number, delta: number) => {
     setCart((prev) => {
@@ -30,7 +26,7 @@ export default function CardapioPage() {
     if (!clientName.trim() || Object.keys(cart).length === 0) return;
 
     const items = Object.entries(cart).map(([itemId, qty]) => {
-      const item = MENU.find((m) => m.id === Number(itemId));
+      const item = menu.find((m) => m.id === Number(itemId));
       return { id: Number(itemId), name: item?.name || "", quantity: qty };
     });
 
@@ -56,7 +52,7 @@ export default function CardapioPage() {
       <h1 className="text-2xl font-bold text-orange-600">🍔 Faça seu Pedido</h1>
 
       <form onSubmit={handleSendOrder} className="space-y-4">
-        {MENU.map((item) => (
+        {menu.map((item) => (
           <div
             key={item.id}
             className="flex justify-between items-center p-4 border rounded-xl shadow-sm bg-white"
