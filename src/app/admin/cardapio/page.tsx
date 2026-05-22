@@ -5,6 +5,9 @@ import Link from "next/link";
 import { useMenu } from "@/src/hooks/useMenu";
 import { useAuth } from "@/src/hooks/useAuth";
 import { LoginForm } from "@/src/components/LoginForm";
+import { Modal } from "@/src/components/Modal";
+
+export const dynamic = "force-dynamic";
 
 export default function GerenciarCardapioPage() {
   const { menu, addItem, updateItem, deleteItem } = useMenu();
@@ -15,6 +18,18 @@ export default function GerenciarCardapioPage() {
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [modalConfig, setModalConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: string;
+    confirmLabel?: string;
+    variant?: "danger" | "success" | "warning";
+    onConfirm?: () => void;
+  }>({
+    isOpen: false,
+    title: "",
+    description: "",
+  });
 
   useEffect(() => {
     setMounted(true);
@@ -46,18 +61,27 @@ export default function GerenciarCardapioPage() {
     setPrice(item.price.toString());
   };
 
-  const handleDelete = async (id: number) => {
-    if (confirm("Deseja mesmo excluir este item do cardápio?")) {
-      // Deleta direto no Supabase
-      await deleteItem(id);
+  const handleDelete = (id: number) => {
+    const item = menu.find((m) => m.id === id);
 
-      // Se o usuário estiver editando o item que acabou de ser deletado, limpa o formulário
-      if (editingId === id) {
-        setEditingId(null);
-        setName("");
-        setPrice("");
-      }
-    }
+    setModalConfig({
+      isOpen: true,
+      title: "Remover do Cardápio? 🗑️",
+      description: `Tem certeza que deseja excluir permanentemente o item "${item?.name || "este item"}"?`,
+      confirmLabel: "Excluir Item",
+      variant: "danger",
+      onConfirm: async () => {
+        // Deleta direto no Supabase
+        await deleteItem(id);
+
+        // Se o usuário estiver editando o item que acabou de ser deletado, limpa o formulário
+        if (editingId === id) {
+          setEditingId(null);
+          setName("");
+          setPrice("");
+        }
+      },
+    });
   };
 
   return (
@@ -141,6 +165,16 @@ export default function GerenciarCardapioPage() {
           </div>
         ))}
       </div>
+
+      <Modal
+        isOpen={modalConfig.isOpen}
+        title={modalConfig.title}
+        description={modalConfig.description}
+        confirmLabel={modalConfig.confirmLabel}
+        variant={modalConfig.variant}
+        onConfirm={modalConfig.onConfirm}
+        onClose={() => setModalConfig((prev) => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 }

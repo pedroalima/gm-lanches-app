@@ -75,7 +75,7 @@ export function useOrders() {
   // Atualiza o status do pedido na nuvem
   const updateStatus = async (
     id: string,
-    nextStatus: "Em Preparo" | "Pronto",
+    nextStatus: "Pendente" | "Em Preparo" | "Pronto",
   ) => {
     await supabase.from("orders").update({ status: nextStatus }).eq("id", id);
   };
@@ -109,5 +109,17 @@ export function useOrders() {
     await supabase.from("orders").delete().in("status", statusList);
   };
 
-  return { orders, saveOrders, updateStatus, createOrder, clearTab };
+  // Deleta um único pedido definitivo no banco de dados pelo ID dele
+  const deleteOrder = async (id: string) => {
+    await supabase.from("orders").delete().eq("id", id);
+  };
+
+  return {
+    orders,
+    saveOrders,
+    updateStatus,
+    createOrder,
+    clearTab,
+    deleteOrder,
+  };
 }
