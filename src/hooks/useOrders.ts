@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { createClient } from "@/lib/supabase/client";
 
 export interface OrderItem {
   id: number;
@@ -17,31 +18,96 @@ export interface Order {
 }
 
 export function useOrders() {
-  const [orders, setOrders] = useState<Order[]>(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("lanchonete_orders");
-      return saved ? JSON.parse(saved) : [];
+  const [orders, setOrders] = useState<Order[]>([]);
+  const supabase = createClient();
+
+  const fetchOrders = async () => {
+    // Busca os pedidos e faz o JOIN automático trazendo seus respectivos itens
+    const { data, error } = await supabase
+      .from("orders")
+      .select(
+        "id, client_name, status, created_at, order_items(menu_id, name, quantity)",
+      );
+
+    if (!error && data) {
+      const formattedOrders: Order[] = data.map((o: any) => ({
+        id: o.id,
+        clientName: o.client_name,
+        status: o.status,
+        createdAt: o.created_at,
+        items: o.order_items.map((i: any) => ({
+          id: i.menu_id,
+          name: i.name,
+          quantity: i.quantity,
+        })),
+      }));
+      setOrders(formattedOrders);
     }
-    return [];
-  });
-
-  // Seu useEffect agora serve EXCLUSIVAMENTE para ouvir outras abas
-  useEffect(() => {
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === "lanchonete_orders") {
-        setOrders(e.newValue ? JSON.parse(e.newValue) : []);
-      }
-    };
-
-    window.addEventListener("storage", handleStorageChange);
-    return () => window.removeEventListener("storage", handleStorageChange);
-  }, []);
-
-  // Função central para salvar dados
-  const saveOrders = (newOrders: Order[]) => {
-    setOrders(newOrders);
-    localStorage.setItem("lanchonete_orders", JSON.stringify(newOrders));
   };
 
-  return { orders, saveOrders };
+  useEffect(() => {
+    fetchOrders();
+
+    // Escuta alterações de pedidos e itens em tempo real de qualquer celular/PC
+    const channel = supabase
+      .channel("orders_realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "orders" },
+        () => fetchOrders(),
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "order_items" },
+        () => fetchOrders(),
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  const saveOrders = async (newOrders: Order[]) => {
+    setOrders(newOrders);
+  };
+
+  // Atualiza o status do pedido na nuvem
+  const updateStatus = async (
+    id: string,
+    nextStatus: "Em Preparo" | "Pronto",
+  ) => {
+    await supabase.from("orders").update({ status: nextStatus }).eq("id", id);
+  };
+
+  // Envia um novo pedido (usado na página do cliente / cardápio)
+  const createOrder = async (
+    clientName: string,
+    items: OrderItem[],
+    createdAt: string,
+  ) => {
+    const { data: orderData, error: orderError } = await supabase
+      .from("orders")
+      .insert([
+        { client_name: clientName, status: "Pendente", created_at: createdAt },
+      ])
+      .select()
+      .single();
+
+    if (!orderError && orderData) {
+      const itemsToInsert = items.map((item) => ({
+        order_id: orderData.id,
+        menu_id: item.id,
+        name: item.name,
+        quantity: item.quantity,
+      }));
+      await supabase.from("order_items").insert(itemsToInsert);
+    }
+  };
+
+  const clearTab = async (statusList: string[]) => {
+    await supabase.from("orders").delete().in("status", statusList);
+  };
+
+  return { orders, saveOrders, updateStatus, createOrder, clearTab };
 }

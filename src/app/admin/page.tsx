@@ -8,7 +8,7 @@ import Link from "next/link";
 import { useMenu } from "@/src/hooks/useMenu";
 
 export default function AdminPage() {
-  const { orders, saveOrders } = useOrders();
+  const { orders, updateStatus, clearTab } = useOrders();
   const { isAuthenticated, error, login, logout } = useAuth();
   const { menu } = useMenu();
 
@@ -20,25 +20,17 @@ export default function AdminPage() {
     setMounted(true);
   }, []);
 
-  const updateStatus = (id: string, nextStatus: "Em Preparo" | "Pronto") => {
-    const updated = orders.map((o) =>
-      o.id === id ? { ...o, status: nextStatus } : o,
-    );
-    saveOrders(updated);
-  };
-
   // Limpa apenas os pedidos da aba atual para não apagar tudo por engano
-  const clearCurrentTab = () => {
+  const clearCurrentTab = async () => {
     const mensagem =
       activeTab === "cozinha"
         ? "Deseja limpar todos os pedidos em andamento?"
         : "Deseja limpar o histórico de pedidos prontos?";
 
     if (confirm(mensagem)) {
-      const remaining = orders.filter((o) =>
-        activeTab === "cozinha" ? o.status === "Pronto" : o.status !== "Pronto",
-      );
-      saveOrders(remaining);
+      const statusParaDeletar =
+        activeTab === "cozinha" ? ["Pendente", "Em Preparo"] : ["Pronto"];
+      await clearTab(statusParaDeletar);
     }
   };
 

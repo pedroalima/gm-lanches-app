@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { createClient } from "@/lib/supabase/client";
 
 export interface MenuItem {
   id: number;
@@ -8,35 +9,58 @@ export interface MenuItem {
   price: number;
 }
 
-const DEFAULT_MENU: MenuItem[] = [
-  { id: 1, name: "X-Burger", price: 18.0 },
-  { id: 2, name: "Batata Frita", price: 12.0 },
-  { id: 3, name: "Refrigerante LATA", price: 6.0 },
-];
-
 export function useMenu() {
-  const [menu, setMenu] = useState<MenuItem[]>(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("lanchonete_menu");
-      return saved ? JSON.parse(saved) : DEFAULT_MENU;
-    }
-    return DEFAULT_MENU;
-  });
+  const [menu, setMenu] = useState<MenuItem[]>([]);
+  const supabase = createClient();
 
-  useEffect(() => {
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === "lanchonete_menu" && e.newValue) {
-        setMenu(JSON.parse(e.newValue));
-      }
-    };
-    window.addEventListener("storage", handleStorageChange);
-    return () => window.removeEventListener("storage", handleStorageChange);
-  }, []);
+  // Carrega o cardápio inicial
+  const fetchMenu = async () => {
+    const { data, error } = await supabase
+      .from("menu")
+      .select("*")
+      .order("id", { ascending: true });
 
-  const saveMenu = (newMenu: MenuItem[]) => {
-    setMenu(newMenu);
-    localStorage.setItem("lanchonete_menu", JSON.stringify(newMenu));
+    if (!error && data) setMenu(data as MenuItem[]);
   };
 
-  return { menu, saveMenu };
+  useEffect(() => {
+    fetchMenu();
+
+    // Liga a escuta em tempo real (Corrigido para 'schema')
+    const channel = supabase
+      .channel("menu_realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "menu" },
+        () => {
+          fetchMenu();
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  const saveMenu = async (newMenu: MenuItem[]) => {
+    // Como o admin adiciona ou edita um por vez, enviamos as alterações direto
+    // Para simplificar o seu código atual, esta função pode salvar o último item alterado:
+    setMenu(newMenu);
+  };
+
+  // Funções auxiliares diretas do Supabase para usar no formulário
+  const addItem = async (name: string, price: number) => {
+    await supabase.from("menu").insert([{ name, price }]);
+  };
+
+  const updateItem = async (id: number, name: string, price: number) => {
+    await supabase.from("menu").update({ name, price }).eq("id", id);
+  };
+
+  const deleteItem = async (id: number) => {
+    await supabase.from("menu").delete().eq("id", id);
+  };
+
+  return { menu, saveMenu, addItem, updateItem, deleteItem };
 }

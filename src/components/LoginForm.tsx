@@ -3,7 +3,7 @@
 import { useState } from "react";
 
 interface LoginFormProps {
-  onLogin: (username: string, password: string) => boolean;
+  onLogin: (username: string, password: string) => Promise<boolean>;
   error: string;
 }
 
@@ -11,9 +11,9 @@ export function LoginForm({ onLogin, error }: LoginFormProps) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const success = onLogin(username, password);
+    const success = await onLogin(username, password);
     if (success) {
       setUsername("");
       setPassword("");

@@ -2,12 +2,12 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useMenu, MenuItem } from "@/src/hooks/useMenu";
+import { useMenu } from "@/src/hooks/useMenu";
 import { useAuth } from "@/src/hooks/useAuth";
 import { LoginForm } from "@/src/components/LoginForm";
 
 export default function GerenciarCardapioPage() {
-  const { menu, saveMenu } = useMenu();
+  const { menu, addItem, updateItem, deleteItem } = useMenu();
   const { isAuthenticated, error, login } = useAuth();
   const [mounted, setMounted] = useState(false);
 
@@ -23,40 +23,40 @@ export default function GerenciarCardapioPage() {
   if (!mounted) return <div className="min-h-screen bg-gray-50" />;
   if (!isAuthenticated) return <LoginForm onLogin={login} error={error} />;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !price) return;
 
     if (editingId !== null) {
-      // Editar item existente
-      const updatedMenu = menu.map((item) =>
-        item.id === editingId ? { ...item, name, price: Number(price) } : item,
-      );
-      saveMenu(updatedMenu);
+      // Editar item existente direto no Supabase
+      await updateItem(editingId, name, Number(price));
       setEditingId(null);
     } else {
-      // Adicionar novo item
-      const newItem: MenuItem = {
-        id: Date.now(),
-        name,
-        price: Number(price),
-      };
-      saveMenu([...menu, newItem]);
+      // Adicionar novo item direto no Supabase
+      await addItem(name, Number(price));
     }
 
     setName("");
     setPrice("");
   };
 
-  const handleEditInit = (item: MenuItem) => {
+  const handleEditInit = (item: any) => {
     setEditingId(item.id);
     setName(item.name);
     setPrice(item.price.toString());
   };
 
-  const handleDelete = (id: number) => {
+  const handleDelete = async (id: number) => {
     if (confirm("Deseja mesmo excluir este item do cardápio?")) {
-      saveMenu(menu.filter((item) => item.id !== id));
+      // Deleta direto no Supabase
+      await deleteItem(id);
+
+      // Se o usuário estiver editando o item que acabou de ser deletado, limpa o formulário
+      if (editingId === id) {
+        setEditingId(null);
+        setName("");
+        setPrice("");
+      }
     }
   };
 
