@@ -5,7 +5,8 @@ interface ModalProps {
   onClose: () => void;
   onConfirm?: () => void; // Opcional (se não enviado, age apenas como informativo/alerta)
   title: string;
-  description: string;
+  description?: string;
+  children?: React.ReactNode;
   confirmLabel?: string;
   variant?: "danger" | "success" | "warning";
 }
@@ -16,6 +17,7 @@ export function Modal({
   onConfirm,
   title,
   description,
+  children,
   confirmLabel = "Confirmar",
   variant = "warning",
 }: ModalProps) {
@@ -43,9 +45,10 @@ export function Modal({
           <h3 className="text-lg font-black text-gray-900 tracking-tight">
             {title}
           </h3>
-          <p className="text-sm text-gray-500 font-medium leading-relaxed">
-            {description}
-          </p>
+          {description && (
+            <p className="text-sm text-gray-500 font-medium">{description}</p>
+          )}
+          {children && <div className="text-left w-full">{children}</div>}
         </div>
 
         <div className="flex gap-2 pt-2">

@@ -1,5 +1,3 @@
-"use client";
-
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 
@@ -7,13 +5,23 @@ export interface MenuItem {
   id: number;
   name: string;
   price: number;
+  category: string;
+}
+
+// 1. NOVO: Interface para mapear a nova tabela do banco
+export interface MenuAddon {
+  id: number;
+  name: string;
+  price: number;
+  category: string;
 }
 
 export function useMenu() {
   const [menu, setMenu] = useState<MenuItem[]>([]);
+  // 2. NOVO: Estado para guardar os adicionais do banco
+  const [addons, setAddons] = useState<MenuAddon[]>([]);
   const supabase = createClient();
 
-  // Carrega o cardápio inicial
   const fetchMenu = async () => {
     const { data, error } = await supabase
       .from("menu")
@@ -23,10 +31,20 @@ export function useMenu() {
     if (!error && data) setMenu(data as MenuItem[]);
   };
 
+  // 3. NOVO: Função para buscar os adicionais direto do banco
+  const fetchAddons = async () => {
+    const { data, error } = await supabase
+      .from("menu_addons")
+      .select("*")
+      .order("id", { ascending: true });
+
+    if (!error && data) setAddons(data as MenuAddon[]);
+  };
+
   useEffect(() => {
     fetchMenu();
+    fetchAddons();
 
-    // Liga a escuta em tempo real (Corrigido para 'schema')
     const channel = supabase
       .channel("menu_realtime")
       .on(
@@ -34,6 +52,14 @@ export function useMenu() {
         { event: "*", schema: "public", table: "menu" },
         () => {
           fetchMenu();
+        },
+      )
+      // 4. NOVO: Escuta mudanças nos adicionais em tempo real também!
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "menu_addons" },
+        () => {
+          fetchAddons();
         },
       )
       .subscribe();
@@ -49,18 +75,50 @@ export function useMenu() {
     setMenu(newMenu);
   };
 
-  // Funções auxiliares diretas do Supabase para usar no formulário
-  const addItem = async (name: string, price: number) => {
-    await supabase.from("menu").insert([{ name, price }]);
+  // ATUALIZADO: Inclui a categoria na criação
+  const addItem = async (name: string, price: number, category: string) => {
+    await supabase
+      .from("menu")
+      .insert([{ name, price, category: category.trim().toLowerCase() }]);
   };
 
-  const updateItem = async (id: number, name: string, price: number) => {
-    await supabase.from("menu").update({ name, price }).eq("id", id);
+  // ATUALIZADO: Inclui a categoria na edição
+  const updateItem = async (
+    id: number,
+    name: string,
+    price: number,
+    category: string,
+  ) => {
+    await supabase
+      .from("menu")
+      .update({ name, price, category: category.trim().toLowerCase() })
+      .eq("id", id);
   };
 
   const deleteItem = async (id: number) => {
     await supabase.from("menu").delete().eq("id", id);
   };
 
-  return { menu, saveMenu, addItem, updateItem, deleteItem };
+  // NOVO: Adicionar Adicional direto no Supabase
+  const addAddon = async (name: string, price: number, category: string) => {
+    await supabase
+      .from("menu_addons")
+      .insert([{ name, price, category: category.trim().toLowerCase() }]);
+  };
+
+  // NOVO: Deletar Adicional do Supabase
+  const deleteAddon = async (id: number) => {
+    await supabase.from("menu_addons").delete().eq("id", id);
+  };
+
+  return {
+    menu,
+    addons,
+    saveMenu,
+    addItem,
+    updateItem,
+    deleteItem,
+    addAddon,
+    deleteAddon,
+  };
 }

@@ -95,7 +95,7 @@ export default function AdminPage() {
     activeTab === "cozinha" ? pendingOrders : completedOrders;
 
   return (
-    <div className="p-6 max-w-5xl mx-auto space-y-6">
+    <div className="p-4 mx-9/10 space-y-6">
       {/* Cabeçalho */}
       <div className="flex flex-col gap-4 pb-6 border-b border-gray-200 md:flex-row md:items-center md:justify-between">
         <div className="flex items-center justify-between md:justify-start gap-3">
@@ -104,24 +104,24 @@ export default function AdminPage() {
           </h1>
         </div>
 
-        <div className="flex-col items-center gap-1 sm:flex-nowrap">
+        <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
           <Link
             href="/"
-            className="flex-1 sm:flex-none text-center bg-gray-800 hover:bg-gray-950 active:bg-black text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-all shadow-sm flex items-center justify-center gap-1.5"
+            className="w-full sm:w-auto text-center bg-gray-800 hover:bg-gray-950 active:bg-black text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-all shadow-sm flex items-center justify-center gap-1.5"
           >
             <span>🛒</span> Ver Cardápio
           </Link>
 
           <Link
             href="/admin/cardapio"
-            className="flex-1 sm:flex-none text-center bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-all shadow-sm shadow-orange-100 flex items-center justify-center gap-1.5"
+            className="w-full sm:w-auto text-center bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-all shadow-sm shadow-orange-100 flex items-center justify-center gap-1.5"
           >
             <span>✏️</span> Gerenciar Cardápio
           </Link>
 
           <button
             onClick={logout}
-            className="w-full bg-red-500 hover:bg-red-600 active:bg-red-700 text-white text-xs font-bold px-3 py-2.5 rounded-xl transition-all border border-gray-300"
+            className="w-full sm:w-auto bg-red-500 hover:bg-red-600 active:bg-red-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-all border border-red-600 shadow-sm flex items-center justify-center"
           >
             Sair
           </button>
@@ -154,7 +154,7 @@ export default function AdminPage() {
               : "text-gray-500 hover:text-gray-900"
           }`}
         >
-          ✅ Prontos para Entrega
+          ✅ Prontos
           <span
             className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${activeTab === "prontos" ? "bg-green-100 text-green-800" : "bg-gray-200 text-gray-600"}`}
           >
