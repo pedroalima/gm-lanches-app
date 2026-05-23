@@ -1,15 +1,24 @@
 "use client";
 
-import { useState, useEffect } from "react"; // Adicionado useEffect
+import { useState, useEffect } from "react";
 import { useOrders } from "@/src/hooks/useOrders";
 import { useAuth } from "@/src/hooks/useAuth";
 import { LoginForm } from "@/src/components/LoginForm";
 import Link from "next/link";
 import { useMenu } from "@/src/hooks/useMenu";
 import { Modal } from "@/src/components/Modal";
+import { Loading } from "@/src/components/Loading";
+import { DeleteButton } from "@/src/components/DeleteButton";
 
 export default function AdminPage() {
-  const { orders, updateStatus, clearTab, deleteOrder } = useOrders();
+  const {
+    orders,
+    updateStatus,
+    clearTab,
+    deleteOrder,
+    isFetching,
+    isMutating,
+  } = useOrders();
   const { isAuthenticated, error, login, logout } = useAuth();
   const { menu } = useMenu();
 
@@ -95,7 +104,10 @@ export default function AdminPage() {
     activeTab === "cozinha" ? pendingOrders : completedOrders;
 
   return (
-    <div className="p-4 mx-9/10 space-y-6">
+    <div className="relative p-4 mx-9/10 space-y-6 min-h-screen">
+      {/* Overlay de carregamento para a lista principal */}
+      {isFetching && <Loading />}
+
       {/* Cabeçalho */}
       <div className="flex flex-col gap-4 pb-6 border-b border-gray-200 md:flex-row md:items-center md:justify-between">
         <div className="flex items-center justify-between md:justify-start gap-3">
@@ -209,13 +221,10 @@ export default function AdminPage() {
                   <div className="text-xs text-gray-400 mb-3 flex justify-between items-center">
                     <span>{order.createdAt}</span>
                     {/* Botão de Deletar Pedido Individual */}
-                    <button
+                    <DeleteButton
+                      disabled={isMutating}
                       onClick={() => handleDeleteOrder(order.id)}
-                      className="text-gray-400 hover:text-red-600 transition-colors p-1"
-                      title="Excluir pedido"
-                    >
-                      🗑️
-                    </button>
+                    />
                   </div>
 
                   {/* Lista de Itens */}
@@ -261,6 +270,7 @@ export default function AdminPage() {
                   <div className="grid grid-cols-2 gap-2 pt-2 border-t">
                     {/* Botão Em Preparo */}
                     <button
+                      disabled={isMutating}
                       onClick={() =>
                         updateStatus(
                           order.id,
@@ -269,34 +279,43 @@ export default function AdminPage() {
                             : "Em Preparo",
                         )
                       }
-                      className={`text-xs py-2 rounded-lg font-bold transition-colors ${
+                      className={`text-xs py-2 rounded-lg font-bold transition-colors flex items-center justify-center min-h-[32px] ${
                         order.status === "Em Preparo"
                           ? "bg-blue-600 hover:bg-blue-700 text-white shadow-inner"
                           : "bg-gray-100 hover:bg-gray-200 text-gray-700"
-                      }`}
+                      } disabled:opacity-50`}
                     >
-                      {order.status === "Em Preparo"
-                        ? "↩️ Voltar Pendente"
-                        : "👨‍🍳 Em Preparo"}
+                      {isMutating ? (
+                        <div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                      ) : order.status === "Em Preparo" ? (
+                        "↩️ Voltar Pendente"
+                      ) : (
+                        "👨‍🍳 Em Preparo"
+                      )}
                     </button>
 
                     {/* Botão Pronto */}
                     <button
+                      disabled={isMutating}
                       onClick={() =>
                         updateStatus(
                           order.id,
                           order.status === "Pronto" ? "Em Preparo" : "Pronto",
                         )
                       }
-                      className={`text-xs py-2 rounded-lg font-bold transition-colors ${
+                      className={`text-xs py-2 rounded-lg font-bold transition-colors flex items-center justify-center min-h-[32px] ${
                         order.status === "Pronto"
                           ? "bg-green-600 hover:bg-green-700 text-white shadow-inner"
                           : "bg-gray-100 hover:bg-gray-200 text-gray-700"
-                      }`}
+                      } disabled:opacity-50`}
                     >
-                      {order.status === "Pronto"
-                        ? "↩️ Reverter Preparo"
-                        : "✅ Pronto"}
+                      {isMutating ? (
+                        <div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                      ) : order.status === "Pronto" ? (
+                        "↩️ Reverter Preparo"
+                      ) : (
+                        "✅ Pronto"
+                      )}
                     </button>
                   </div>
                 </div>
@@ -309,12 +328,17 @@ export default function AdminPage() {
       {/* Botão de Limpeza contextualizado */}
       {currentOrders.length > 0 && (
         <button
+          disabled={isMutating}
           onClick={clearCurrentTab}
-          className="w-full bg-red-50 hover:bg-red-100 text-red-600 active:bg-red-200 text-xs font-bold px-4 py-2.5 rounded-xl transition-all border border-red-200"
+          className="w-full bg-red-50 hover:bg-red-100 text-red-600 active:bg-red-200 text-xs font-bold px-4 py-2.5 rounded-xl transition-all border border-red-200 flex items-center justify-center h-[38px] disabled:opacity-50"
         >
-          {activeTab === "cozinha"
-            ? "❌ Limpar Pedidos da Cozinha"
-            : "🧹 Limpar Histórico de Prontos"}
+          {isMutating ? (
+            <div className="w-4 h-4 border-2 border-red-600 border-t-transparent rounded-full animate-spin" />
+          ) : activeTab === "cozinha" ? (
+            "❌ Limpar Pedidos da Cozinha"
+          ) : (
+            "🧹 Limpar Histórico de Prontos"
+          )}
         </button>
       )}
 

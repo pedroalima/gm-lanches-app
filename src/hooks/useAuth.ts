@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 export function useAuth() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const supabase = createClient();
 
   // Verifica se o usuário já estava logado na nuvem ao abrir o app
@@ -21,15 +22,16 @@ export function useAuth() {
 
   const login = async (username: string, password: string) => {
     setError("");
+    setIsLoading(true);
 
-    // O username que você digitar no formulário (ex: admin) pode ser convertido
-    // para o e-mail que você cadastrou lá no painel do Supabase
     const email = username.includes("@") ? username : "admin@lanchonete.com";
 
     const { error: supabaseError } = await supabase.auth.signInWithPassword({
       email,
       password, // Use a senha que cadastrou no painel (mínimo 6 caracteres)
     });
+
+    setIsLoading(false);
 
     if (supabaseError) {
       setError("Usuário ou senha incorretos na nuvem!");
@@ -46,5 +48,5 @@ export function useAuth() {
     setIsAuthenticated(false);
   };
 
-  return { isAuthenticated, error, login, logout };
+  return { isAuthenticated, error, isLoading, login, logout };
 }

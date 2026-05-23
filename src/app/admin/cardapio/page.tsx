@@ -6,6 +6,8 @@ import { useMenu } from "@/src/hooks/useMenu";
 import { useAuth } from "@/src/hooks/useAuth";
 import { LoginForm } from "@/src/components/LoginForm";
 import { Modal } from "@/src/components/Modal";
+import { Loading } from "@/src/components/Loading";
+import { DeleteButton } from "@/src/components/DeleteButton";
 
 export const dynamic = "force-dynamic";
 
@@ -17,21 +19,37 @@ export default function GerenciarCardapioPage() {
     updateItem,
     deleteItem,
     addAddon,
+    updateAddon,
     deleteAddon,
+    isFetching,
+    isMutating,
   } = useMenu();
   const { isAuthenticated, error, login } = useAuth();
   const [mounted, setMounted] = useState(false);
 
-  // Estados do formulário de Itens do Menu
+  // Estados do formulário de CRIAÇÃO de Itens
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
   const [category, setCategory] = useState("");
-  const [editingId, setEditingId] = useState<number | null>(null);
 
-  // Estados do formulário de Novos Adicionais
+  // Estados do formulário de CRIAÇÃO de Adicionais
   const [addonName, setAddonName] = useState("");
   const [addonPrice, setAddonPrice] = useState("");
   const [addonCategory, setAddonCategory] = useState("");
+
+  // Estados para Controle dos Modais de Edição Independente
+  const [editingItem, setEditingItem] = useState<{
+    id: number;
+    name: string;
+    price: string;
+    category: string;
+  } | null>(null);
+  const [editingAddon, setEditingAddon] = useState<{
+    id: number;
+    name: string;
+    price: string;
+    category: string;
+  } | null>(null);
 
   const [modalConfig, setModalConfig] = useState<{
     isOpen: boolean;
@@ -53,40 +71,68 @@ export default function GerenciarCardapioPage() {
   if (!mounted) return <div className="min-h-screen bg-gray-50" />;
   if (!isAuthenticated) return <LoginForm onLogin={login} error={error} />;
 
-  // Manipula envio de Itens Principais
-  const handleSubmitItem = async (e: React.FormEvent) => {
+  // Manipula criação de Itens Principais
+  const handleCreateItem = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !price || !category.trim()) return;
 
-    if (editingId !== null) {
-      await updateItem(editingId, name, Number(price), category);
-      setEditingId(null);
-    } else {
-      await addItem(name, Number(price), category);
-    }
-
+    await addItem(name, Number(price), category);
     setName("");
     setPrice("");
     setCategory("");
   };
 
+  // Salva a edição do Item Principal vinda do Modal
+  const handleSaveItemEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (
+      !editingItem ||
+      !editingItem.name.trim() ||
+      !editingItem.price ||
+      !editingItem.category.trim()
+    )
+      return;
+
+    await updateItem(
+      editingItem.id,
+      editingItem.name,
+      Number(editingItem.price),
+      editingItem.category,
+    );
+    setEditingItem(null);
+  };
+
   // Manipula criação de Adicionais
-  const handleSubmitAddon = async (e: React.FormEvent) => {
+  const handleCreateAddon = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!addonName.trim() || !addonPrice || !addonCategory.trim()) return;
 
     await addAddon(addonName, Number(addonPrice), addonCategory);
-
     setAddonName("");
     setAddonPrice("");
     setAddonCategory("");
   };
 
-  const handleEditInit = (item: any) => {
-    setEditingId(item.id);
-    setName(item.name);
-    setPrice(item.price.toString());
-    setCategory(item.category);
+  // Salva a edição do Adicional vinda do Modal
+  const handleSaveAddonEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (
+      !editingAddon ||
+      !editingAddon.name.trim() ||
+      !editingAddon.price ||
+      !editingAddon.category.trim()
+    )
+      return;
+
+    if (typeof updateAddon === "function") {
+      await updateAddon(
+        editingAddon.id,
+        editingAddon.name,
+        Number(editingAddon.price),
+        editingAddon.category,
+      );
+    }
+    setEditingAddon(null);
   };
 
   const handleDeleteItem = (id: number) => {
@@ -99,12 +145,6 @@ export default function GerenciarCardapioPage() {
       variant: "danger",
       onConfirm: async () => {
         await deleteItem(id);
-        if (editingId === id) {
-          setEditingId(null);
-          setName("");
-          setPrice("");
-          setCategory("");
-        }
       },
     });
   };
@@ -122,20 +162,37 @@ export default function GerenciarCardapioPage() {
     });
   };
 
-  // Agrupa os adicionais por categoria para exibição limpa na tela
   const categoriasDeAdicionais = Array.from(
     new Set(addons.map((a) => a.category)),
   );
 
+  // Cria uma lista unificada de todas as categorias existentes na aplicação
+  const listaCategorias = Array.from(
+    new Set([
+      ...menu.map((item) => item.category.toLowerCase()),
+      ...addons.map((addon) => addon.category.toLowerCase()),
+    ]),
+  ).sort();
+
   return (
-    <div className="p-6 max-w-3xl mx-auto space-y-10">
-      <div className="flex justify-between items-center border-b pb-4">
+    <div className="relative p-6 max-w-3xl mx-auto space-y-10 min-h-screen">
+      {/* Elemento Datalist Global compartilhado por todos os inputs de categorias */}
+      <datalist id="categories-list">
+        {listaCategorias.map((cat) => (
+          <option key={cat} value={cat} />
+        ))}
+      </datalist>
+
+      {/* Overlay de carregamento para sincronização da lista */}
+      {isFetching && <Loading />}
+
+      <div className="w-full flex flex-col sm:flex-row justify-between items-start sm:items-center border-b pb-4 gap-4">
         <h1 className="text-2xl font-bold text-gray-950">
           🍔 Gerenciar Itens do Cardápio
         </h1>
         <Link
           href="/admin"
-          className="text-sm bg-gray-600 hover:bg-gray-700 text-white px-3 py-2 rounded-lg transition-colors"
+          className="text-sm bg-gray-600 hover:bg-gray-700 text-white px-3 py-2 rounded-lg transition-colors text-center w-full sm:w-auto"
         >
           Voltar para Pedidos
         </Link>
@@ -148,7 +205,7 @@ export default function GerenciarCardapioPage() {
         </h2>
 
         <form
-          onSubmit={handleSubmitItem}
+          onSubmit={handleCreateItem}
           className="p-4 border rounded-xl bg-white shadow-sm flex flex-col md:flex-row gap-3 items-end"
         >
           <div className="flex-1 w-full">
@@ -158,10 +215,11 @@ export default function GerenciarCardapioPage() {
             <input
               type="text"
               required
+              disabled={isMutating}
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Ex: Tapioca de Carne de Sol"
-              className="w-full p-2 border rounded-lg text-sm focus:ring-2 focus:ring-orange-500 outline-none"
+              className="w-full p-2 border rounded-lg text-sm focus:ring-2 focus:ring-orange-500 outline-none disabled:bg-gray-50 disabled:text-gray-400"
             />
           </div>
           <div className="w-full md:w-40">
@@ -171,10 +229,12 @@ export default function GerenciarCardapioPage() {
             <input
               type="text"
               required
+              list="categories-list"
+              disabled={isMutating}
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              placeholder="Ex: tapiocas, sucos"
-              className="w-full p-2 border rounded-lg text-sm focus:ring-2 focus:ring-orange-500 outline-none lowercase"
+              placeholder="Ex: tapiocas"
+              className="w-full p-2 border rounded-lg text-sm focus:ring-2 focus:ring-orange-500 outline-none lowercase disabled:bg-gray-50 disabled:text-gray-400"
             />
           </div>
           <div className="w-full md:w-28">
@@ -185,50 +245,81 @@ export default function GerenciarCardapioPage() {
               type="number"
               step="0.01"
               required
+              disabled={isMutating}
               value={price}
               onChange={(e) => setPrice(e.target.value)}
               placeholder="0.00"
-              className="w-full p-2 border rounded-lg text-sm focus:ring-2 focus:ring-orange-500 outline-none"
+              className="w-full p-2 border rounded-lg text-sm focus:ring-2 focus:ring-orange-500 outline-none disabled:bg-gray-50 disabled:text-gray-400"
             />
           </div>
           <button
             type="submit"
-            className="w-full md:w-auto bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-lg text-sm font-bold transition-colors h-[38px]"
+            disabled={isMutating}
+            className="w-full md:w-24 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-bold transition-colors h-[38px] flex items-center justify-center disabled:opacity-50"
           >
-            {editingId !== null ? "Salvar" : "Adicionar"}
+            {isMutating ? (
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            ) : (
+              "Adicionar"
+            )}
           </button>
         </form>
 
-        <div className="border rounded-xl bg-white shadow-sm divide-y max-h-96 overflow-y-auto">
+        <div className="border border-gray-200 rounded-xl bg-white shadow-sm divide-y divide-gray-100 max-h-96 overflow-y-auto">
           {menu.map((item) => (
             <div
               key={item.id}
-              className="p-4 flex justify-between items-center hover:bg-gray-50"
+              className="p-4 flex items-center justify-between gap-4 hover:bg-gray-50/70 transition-colors"
             >
-              <div>
-                <div className="flex items-center gap-2">
-                  <p className="font-semibold text-gray-900">{item.name}</p>
-                  <span className="bg-orange-50 text-orange-600 text-[10px] font-bold px-2 py-0.5 rounded-full capitalize border border-orange-100">
+              <div className="flex-1 min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="font-semibold text-gray-900 text-sm md:text-base truncate">
+                    {item.name}
+                  </p>
+                  <span className="bg-orange-50 text-orange-600 text-[10px] font-bold px-2 py-0.5 rounded-full capitalize border border-orange-100 shrink-0">
                     {item.category}
                   </span>
                 </div>
-                <p className="text-sm text-gray-500 mt-0.5">
+                <p className="text-sm font-bold text-gray-500 font-mono mt-0.5">
                   R$ {item.price.toFixed(2)}
                 </p>
               </div>
-              <div className="flex gap-2">
+
+              <div className="flex items-center gap-1.5 shrink-0">
                 <button
-                  onClick={() => handleEditInit(item)}
-                  className="text-xs bg-blue-50 hover:bg-blue-100 text-blue-700 px-3 py-1.5 rounded-lg font-medium transition-colors"
+                  type="button"
+                  onClick={() =>
+                    setEditingItem({
+                      id: item.id,
+                      name: item.name,
+                      price: item.price.toString(),
+                      category: item.category,
+                    })
+                  }
+                  disabled={isMutating}
+                  title="Editar produto"
+                  className="p-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50 active:bg-blue-100 rounded-lg transition-all disabled:opacity-40"
                 >
-                  Editar
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={2}
+                    stroke="currentColor"
+                    className="w-4 h-4"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"
+                    />
+                  </svg>
                 </button>
-                <button
+
+                <DeleteButton
+                  disabled={isMutating}
                   onClick={() => handleDeleteItem(item.id)}
-                  className="text-xs bg-red-50 hover:bg-red-100 text-red-600 px-3 py-1.5 rounded-lg font-medium transition-colors"
-                >
-                  Excluir
-                </button>
+                />
               </div>
             </div>
           ))}
@@ -240,11 +331,11 @@ export default function GerenciarCardapioPage() {
       {/* SEÇÃO 2: GERENCIAR ADICIONAIS POR CATEGORIA */}
       <div className="space-y-4">
         <h2 className="text-lg font-bold text-gray-800">
-          2. Adicionais por Categoria
+          2. Opções por Categoria
         </h2>
 
         <form
-          onSubmit={handleSubmitAddon}
+          onSubmit={handleCreateAddon}
           className="p-4 border rounded-xl bg-white shadow-sm flex flex-col md:flex-row gap-3 items-end"
         >
           <div className="flex-1 w-full">
@@ -254,10 +345,11 @@ export default function GerenciarCardapioPage() {
             <input
               type="text"
               required
+              disabled={isMutating}
               value={addonName}
               onChange={(e) => setAddonName(e.target.value)}
               placeholder="Ex: Queijo Coalho Extra"
-              className="w-full p-2 border rounded-lg text-sm focus:ring-2 focus:ring-orange-500 outline-none"
+              className="w-full p-2 border rounded-lg text-sm focus:ring-2 focus:ring-orange-500 outline-none disabled:bg-gray-50 disabled:text-gray-400"
             />
           </div>
           <div className="w-full md:w-40">
@@ -267,10 +359,12 @@ export default function GerenciarCardapioPage() {
             <input
               type="text"
               required
+              list="categories-list"
+              disabled={isMutating}
               value={addonCategory}
               onChange={(e) => setAddonCategory(e.target.value)}
-              placeholder="Ex: tapiocas, sucos"
-              className="w-full p-2 border rounded-lg text-sm focus:ring-2 focus:ring-orange-500 outline-none lowercase"
+              placeholder="Ex: tapiocas"
+              className="w-full p-2 border rounded-lg text-sm focus:ring-2 focus:ring-orange-500 outline-none lowercase disabled:bg-gray-50 disabled:text-gray-400"
             />
           </div>
           <div className="w-full md:w-28">
@@ -281,21 +375,26 @@ export default function GerenciarCardapioPage() {
               type="number"
               step="0.01"
               required
+              disabled={isMutating}
               value={addonPrice}
               onChange={(e) => setAddonPrice(e.target.value)}
               placeholder="0.00"
-              className="w-full p-2 border rounded-lg text-sm focus:ring-2 focus:ring-orange-500 outline-none"
+              className="w-full p-2 border rounded-lg text-sm focus:ring-2 focus:ring-orange-500 outline-none disabled:bg-gray-50 disabled:text-gray-400"
             />
           </div>
           <button
             type="submit"
-            className="w-full md:w-auto bg-orange-600 hover:bg-orange-700 text-white px-5 py-2 rounded-lg text-sm font-bold transition-colors h-[38px]"
+            disabled={isMutating}
+            className="w-full md:w-32 bg-orange-600 hover:bg-orange-700 text-white rounded-lg text-sm font-bold transition-colors h-[38px] flex items-center justify-center disabled:opacity-50"
           >
-            Criar Adicional
+            {isMutating ? (
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            ) : (
+              "Criar Adicional"
+            )}
           </button>
         </form>
 
-        {/* Visualização de agrupamento dos adicionais existentes */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {categoriasDeAdicionais.length === 0 ? (
             <p className="text-xs text-gray-400 font-medium p-4 border border-dashed rounded-xl text-center md:col-span-2 bg-gray-50">
@@ -316,25 +415,55 @@ export default function GerenciarCardapioPage() {
                     .map((addon) => (
                       <div
                         key={addon.id}
-                        className="py-2 flex justify-between items-center text-xs"
+                        className="py-2 flex justify-between items-center text-xs gap-2 hover:bg-gray-50/50 px-1 rounded-md transition-colors"
                       >
-                        <div>
-                          <span className="font-semibold text-gray-800">
+                        <div className="flex-1 min-w-0">
+                          <span className="font-semibold text-gray-800 truncate block">
                             {addon.name}
                           </span>
-                          <span className="text-gray-400 ml-2 font-mono">
+                          <span className="text-gray-400 font-mono text-[11px]">
                             R$ {addon.price.toFixed(2)}
                           </span>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            handleDeleteAddon(addon.id, addon.name)
-                          }
-                          className="text-red-500 hover:text-red-700 font-bold px-2 py-1"
-                        >
-                          ✕
-                        </button>
+
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setEditingAddon({
+                                id: addon.id,
+                                name: addon.name,
+                                price: addon.price.toString(),
+                                category: addon.category,
+                              })
+                            }
+                            disabled={isMutating}
+                            title="Editar adicional"
+                            className="p-1.5 text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-md transition-all disabled:opacity-40"
+                          >
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              strokeWidth={2}
+                              stroke="currentColor"
+                              className="w-3.5 h-3.5"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"
+                              />
+                            </svg>
+                          </button>
+
+                          <DeleteButton
+                            disabled={isMutating}
+                            onClick={() =>
+                              handleDeleteAddon(addon.id, addon.name)
+                            }
+                          />
+                        </div>
                       </div>
                     ))}
                 </div>
@@ -344,6 +473,177 @@ export default function GerenciarCardapioPage() {
         </div>
       </div>
 
+      {/* MODAL 1: EDIÇÃO DE PRODUTO PRINCIPAL */}
+      <Modal
+        isOpen={editingItem !== null}
+        title="Editar Produto 🍔"
+        onClose={() => !isMutating && setEditingItem(null)}
+      >
+        {editingItem && (
+          <form onSubmit={handleSaveItemEdit} className="space-y-4 my-2">
+            <div>
+              <label className="block text-xs font-bold text-gray-600 mb-1">
+                Nome do Item
+              </label>
+              <input
+                type="text"
+                required
+                disabled={isMutating}
+                value={editingItem.name}
+                onChange={(e) =>
+                  setEditingItem({ ...editingItem, name: e.target.value })
+                }
+                className="w-full p-2.5 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-500"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-bold text-gray-600 mb-1">
+                  Categoria
+                </label>
+                <input
+                  type="text"
+                  required
+                  list="categories-list"
+                  disabled={isMutating}
+                  value={editingItem.category}
+                  onChange={(e) =>
+                    setEditingItem({
+                      ...editingItem,
+                      category: e.target.value.toLowerCase(),
+                    })
+                  }
+                  className="w-full p-2.5 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-600 mb-1">
+                  Preço (R$)
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  required
+                  disabled={isMutating}
+                  value={editingItem.price}
+                  onChange={(e) =>
+                    setEditingItem({ ...editingItem, price: e.target.value })
+                  }
+                  className="w-full p-2.5 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-500"
+                />
+              </div>
+            </div>
+            <div className="flex gap-2 pt-2">
+              <button
+                type="button"
+                disabled={isMutating}
+                onClick={() => setEditingItem(null)}
+                className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold p-2.5 rounded-xl text-sm transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={isMutating}
+                className="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold p-2.5 rounded-xl text-sm transition-colors flex items-center justify-center"
+              >
+                {isMutating ? (
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  "Salvar Alterações"
+                )}
+              </button>
+            </div>
+          </form>
+        )}
+      </Modal>
+
+      {/* MODAL 2: EDIÇÃO DE ADICIONAL */}
+      <Modal
+        isOpen={editingAddon !== null}
+        title="Editar Adicional ✨"
+        onClose={() => !isMutating && setEditingAddon(null)}
+      >
+        {editingAddon && (
+          <form onSubmit={handleSaveAddonEdit} className="space-y-4 my-2">
+            <div>
+              <label className="block text-xs font-bold text-gray-600 mb-1">
+                Nome do Adicional
+              </label>
+              <input
+                type="text"
+                required
+                disabled={isMutating}
+                value={editingAddon.name}
+                onChange={(e) =>
+                  setEditingAddon({ ...editingAddon, name: e.target.value })
+                }
+                className="w-full p-2.5 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-500"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-bold text-gray-600 mb-1">
+                  Categoria vinculada
+                </label>
+                <input
+                  type="text"
+                  required
+                  list="categories-list"
+                  disabled={isMutating}
+                  value={editingAddon.category}
+                  onChange={(e) =>
+                    setEditingAddon({
+                      ...editingAddon,
+                      category: e.target.value.toLowerCase(),
+                    })
+                  }
+                  className="w-full p-2.5 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-600 mb-1">
+                  Preço (R$)
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  required
+                  disabled={isMutating}
+                  value={editingAddon.price}
+                  onChange={(e) =>
+                    setEditingAddon({ ...editingAddon, price: e.target.value })
+                  }
+                  className="w-full p-2.5 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-500"
+                />
+              </div>
+            </div>
+            <div className="flex gap-2 pt-2">
+              <button
+                type="button"
+                disabled={isMutating}
+                onClick={() => setEditingAddon(null)}
+                className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold p-2.5 rounded-xl text-sm transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={isMutating}
+                className="flex-1 bg-orange-600 hover:bg-orange-700 text-white font-bold p-2.5 rounded-xl text-sm transition-colors flex items-center justify-center"
+              >
+                {isMutating ? (
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  "Salvar Adicional"
+                )}
+              </button>
+            </div>
+          </form>
+        )}
+      </Modal>
+
+      {/* MODAL CONFIG GERAL (EXCLUSÕES) */}
       <Modal
         isOpen={modalConfig.isOpen}
         title={modalConfig.title}

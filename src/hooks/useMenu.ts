@@ -18,27 +18,32 @@ export interface MenuAddon {
 
 export function useMenu() {
   const [menu, setMenu] = useState<MenuItem[]>([]);
-  // 2. NOVO: Estado para guardar os adicionais do banco
   const [addons, setAddons] = useState<MenuAddon[]>([]);
+  const [isFetching, setIsFetching] = useState<boolean>(false); // Para o carregamento inicial da página
+  const [isMutating, setIsMutating] = useState<boolean>(false); // Para criação/edição/exclusão (botões)
   const supabase = createClient();
 
   const fetchMenu = async () => {
+    setIsFetching(true);
     const { data, error } = await supabase
       .from("menu")
       .select("*")
       .order("id", { ascending: true });
 
     if (!error && data) setMenu(data as MenuItem[]);
+    setIsFetching(false);
   };
 
   // 3. NOVO: Função para buscar os adicionais direto do banco
   const fetchAddons = async () => {
+    setIsFetching(true);
     const { data, error } = await supabase
       .from("menu_addons")
       .select("*")
       .order("id", { ascending: true });
 
     if (!error && data) setAddons(data as MenuAddon[]);
+    setIsFetching(false);
   };
 
   useEffect(() => {
@@ -70,50 +75,72 @@ export function useMenu() {
   }, []);
 
   const saveMenu = async (newMenu: MenuItem[]) => {
-    // Como o admin adiciona ou edita um por vez, enviamos as alterações direto
-    // Para simplificar o seu código atual, esta função pode salvar o último item alterado:
     setMenu(newMenu);
   };
 
-  // ATUALIZADO: Inclui a categoria na criação
+  // Exemplo de como envelopar as suas mutações com segurança:
   const addItem = async (name: string, price: number, category: string) => {
-    await supabase
-      .from("menu")
-      .insert([{ name, price, category: category.trim().toLowerCase() }]);
+    try {
+      setIsMutating(true);
+      await supabase
+        .from("menu")
+        .insert([{ name, price, category: category.trim().toLowerCase() }]);
+    } finally {
+      setIsMutating(false);
+    }
   };
 
-  // ATUALIZADO: Inclui a categoria na edição
   const updateItem = async (
     id: number,
     name: string,
     price: number,
     category: string,
   ) => {
-    await supabase
-      .from("menu")
-      .update({ name, price, category: category.trim().toLowerCase() })
-      .eq("id", id);
+    try {
+      setIsMutating(true);
+      await supabase
+        .from("menu")
+        .update({ name, price, category: category.trim().toLowerCase() })
+        .eq("id", id);
+    } finally {
+      setIsMutating(false);
+    }
   };
 
   const deleteItem = async (id: number) => {
-    await supabase.from("menu").delete().eq("id", id);
+    try {
+      setIsMutating(true);
+      await supabase.from("menu").delete().eq("id", id);
+    } finally {
+      setIsMutating(false);
+    }
   };
 
-  // NOVO: Adicionar Adicional direto no Supabase
   const addAddon = async (name: string, price: number, category: string) => {
-    await supabase
-      .from("menu_addons")
-      .insert([{ name, price, category: category.trim().toLowerCase() }]);
+    try {
+      setIsMutating(true);
+      await supabase
+        .from("menu_addons")
+        .insert([{ name, price, category: category.trim().toLowerCase() }]);
+    } finally {
+      setIsMutating(false);
+    }
   };
 
-  // NOVO: Deletar Adicional do Supabase
   const deleteAddon = async (id: number) => {
-    await supabase.from("menu_addons").delete().eq("id", id);
+    try {
+      setIsMutating(true);
+      await supabase.from("menu_addons").delete().eq("id", id);
+    } finally {
+      setIsMutating(false);
+    }
   };
 
   return {
     menu,
     addons,
+    isFetching,
+    isMutating,
     saveMenu,
     addItem,
     updateItem,

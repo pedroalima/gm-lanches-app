@@ -6,6 +6,7 @@ import { useMenu } from "../hooks/useMenu";
 import { Modal } from "../components/Modal";
 import { useAuth } from "../hooks/useAuth";
 import Link from "next/link";
+import { Loading } from "../components/Loading";
 
 interface CartItem {
   cartId: string; // ID único para diferenciar cada combinação no carrinho
@@ -15,8 +16,8 @@ interface CartItem {
 }
 
 export default function CardapioPage() {
-  const { createOrder } = useOrders();
-  const { menu, addons } = useMenu();
+  const { createOrder, isMutating } = useOrders();
+  const { menu, addons, isFetching } = useMenu();
   const { isAuthenticated } = useAuth();
 
   const [clientName, setClientName] = useState("");
@@ -143,7 +144,10 @@ export default function CardapioPage() {
   );
 
   return (
-    <div className="px-4 pt-6 max-w-md mx-auto space-y-6 pb-24 overflow-hidden w-full box-border">
+    <div className="relative px-4 pt-6 max-w-md mx-auto space-y-6 pb-24 overflow-hidden w-full box-border min-h-screen">
+      {/* Overlay de carregamento para a lista inicial */}
+      {isFetching && <Loading />}
+
       <h1 className="text-2xl font-bold text-orange-600">🍔 Faça seu Pedido</h1>
 
       {isAuthenticated && (
@@ -307,9 +311,9 @@ export default function CardapioPage() {
         isOpen={confirmarOpen}
         title="Revisar Pedido 🛒"
         variant="warning"
-        confirmLabel="Enviar Agora"
+        confirmLabel={isMutating ? "" : "Enviar Agora"}
         onConfirm={handleSendOrder}
-        onClose={() => setConfirmarOpen(false)}
+        onClose={() => !isMutating && setConfirmarOpen(false)}
       >
         <div className="space-y-3 my-2 max-h-60 overflow-y-auto pr-1">
           <p className="text-xs text-gray-500 font-bold">
@@ -344,8 +348,9 @@ export default function CardapioPage() {
                   <div className="flex items-center gap-2.5 bg-gray-50 p-1 rounded-lg border">
                     <button
                       type="button"
+                      disabled={isMutating}
                       onClick={() => handleCartQuantity(cartItem.cartId, -1)}
-                      className="w-6 h-6 bg-white border rounded-md font-bold flex items-center justify-center text-gray-500 active:bg-gray-100"
+                      className="w-6 h-6 bg-white border rounded-md font-bold flex items-center justify-center text-gray-500 active:bg-gray-100 disabled:opacity-50"
                     >
                       -
                     </button>
@@ -354,8 +359,9 @@ export default function CardapioPage() {
                     </span>
                     <button
                       type="button"
+                      disabled={isMutating}
                       onClick={() => handleCartQuantity(cartItem.cartId, 1)}
-                      className="w-6 h-6 bg-white border rounded-md font-bold flex items-center justify-center text-gray-500 active:bg-gray-100"
+                      className="w-6 h-6 bg-white border rounded-md font-bold flex items-center justify-center text-gray-500 active:bg-gray-100 disabled:opacity-50"
                     >
                       +
                     </button>
@@ -372,6 +378,13 @@ export default function CardapioPage() {
               R$ {precoTotalGeral.toFixed(2)}
             </span>
           </div>
+
+          {/* Renderização do spinner substituindo o rodapé/botão do modal se estiver mutando */}
+          {isMutating && (
+            <div className="flex justify-center items-center pt-2">
+              <div className="w-6 h-6 border-3 border-orange-500 border-t-transparent rounded-full animate-spin" />
+            </div>
+          )}
         </div>
       </Modal>
 
