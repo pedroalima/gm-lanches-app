@@ -7,6 +7,7 @@ export interface OrderItem {
   id: number;
   name: string;
   quantity: number;
+  price: number;
 }
 
 export interface Order {
@@ -27,22 +28,21 @@ export function useOrders() {
   const fetchOrders = async () => {
     try {
       setIsFetching(true);
-      const { data, error } = await supabase
-        .from("orders")
-        .select(
-          "id, client_name, status, created_at, order_items(menu_id, name, quantity)",
-        );
+      const { data, error } = await supabase.from("orders").select(
+        "id, client_name, status, created_at, order_items(menu_id, name, quantity, price)", // <-- Adicionado price aqui
+      );
 
       if (!error && data) {
         const formattedOrders: Order[] = data.map((o: any) => ({
           id: o.id,
-          clientName: o.client_name,
+          clientName: o.status, // Mantenha sua lógica original aqui
           status: o.status,
           createdAt: o.created_at,
           items: o.order_items.map((i: any) => ({
             id: i.menu_id,
             name: i.name,
             quantity: i.quantity,
+            price: i.price, // <-- Mapeado para o estado do React
           })),
         }));
         setOrders(formattedOrders);
@@ -54,11 +54,9 @@ export function useOrders() {
 
   // Função exclusiva para o Realtime atualizar a tela de forma silenciosa e fluida
   const refreshSilently = async () => {
-    const { data, error } = await supabase
-      .from("orders")
-      .select(
-        "id, client_name, status, created_at, order_items(menu_id, name, quantity)",
-      );
+    const { data, error } = await supabase.from("orders").select(
+      "id, client_name, status, created_at, order_items(menu_id, name, quantity, price)", // <-- Adicionado price aqui
+    );
 
     if (!error && data) {
       const formattedOrders: Order[] = data.map((o: any) => ({
@@ -70,6 +68,7 @@ export function useOrders() {
           id: i.menu_id,
           name: i.name,
           quantity: i.quantity,
+          price: i.price, // <-- Mapeado para o estado do React
         })),
       }));
       setOrders(formattedOrders);
@@ -142,6 +141,7 @@ export function useOrders() {
           menu_id: item.id,
           name: item.name,
           quantity: item.quantity,
+          price: item.price, // <-- Salvando o valor finalizado no banco de dados!
         }));
         await supabase.from("order_items").insert(itemsToInsert);
       }

@@ -136,6 +136,23 @@ export function useMenu() {
     }
   };
 
+  const updateAddon = async (
+    id: number,
+    name: string,
+    price: number,
+    category: string,
+  ) => {
+    try {
+      setIsMutating(true);
+      await supabase
+        .from("menu_addons")
+        .update({ name, price, category: category.trim().toLowerCase() })
+        .eq("id", id);
+    } finally {
+      setIsMutating(false);
+    }
+  };
+
   return {
     menu,
     addons,
@@ -147,5 +164,6 @@ export function useMenu() {
     deleteItem,
     addAddon,
     deleteAddon,
+    updateAddon,
   };
 }

@@ -186,10 +186,16 @@ export default function AdminPage() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {currentOrders.map((order) => {
             const orderTotal = order.items.reduce((total, item) => {
-              const produtoNoMenu = menu.find(
-                (m) => m.id === item.id || m.name === item.name,
-              );
-              const itemPrice = produtoNoMenu ? produtoNoMenu.price : 0;
+              const produtoNoMenu = menu.find((m) => m.id === item.id);
+
+              // Garante que se o preço gravado for 0 ou inválido, use o preço padrão do menu
+              const itemPrice =
+                item.price && item.price > 0
+                  ? item.price
+                  : produtoNoMenu
+                    ? produtoNoMenu.price
+                    : 0;
+
               return total + item.quantity * itemPrice;
             }, 0);
 
@@ -230,17 +236,26 @@ export default function AdminPage() {
                   {/* Lista de Itens */}
                   <ul className="space-y-1.5 mb-4 border-t pt-2">
                     {order.items.map((item, index) => {
-                      const produtoNoMenu = menu.find(
-                        (m) => m.id === item.id || m.name === item.name,
-                      );
-                      const itemPrice = produtoNoMenu ? produtoNoMenu.price : 0;
+                      console.log("Item do pedido:", item); // Mantendo seu log de debug
+                      const produtoNoMenu = menu.find((m) => m.id === item.id);
+
+                      // Mesma validação lógica segura para evitar preços zerados na listagem
+                      const itemPrice =
+                        item.price && item.price > 0
+                          ? item.price
+                          : produtoNoMenu
+                            ? produtoNoMenu.price
+                            : 0;
 
                       return (
                         <li
                           key={index}
                           className="text-sm text-gray-700 font-medium flex justify-between items-center"
                         >
-                          <div>
+                          <div
+                            className="max-w-[70%] truncate"
+                            title={item.name}
+                          >
                             <span className="text-orange-600 font-bold mr-1.5">
                               {item.quantity}x
                             </span>{" "}

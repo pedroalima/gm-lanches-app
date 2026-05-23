@@ -152,9 +152,9 @@ export default function GerenciarCardapioPage() {
   const handleDeleteAddon = (id: number, name: string) => {
     setModalConfig({
       isOpen: true,
-      title: "Remover Adicional? 🗑️",
-      description: `Tem certeza que deseja remover o adicional "${name}"?`,
-      confirmLabel: "Excluir Adicional",
+      title: "Remover Opção? 🗑️",
+      description: `Tem certeza que deseja remover a opção "${name}"?`,
+      confirmLabel: "Excluir Opção",
       variant: "danger",
       onConfirm: async () => {
         await deleteAddon(id);
@@ -340,7 +340,7 @@ export default function GerenciarCardapioPage() {
         >
           <div className="flex-1 w-full">
             <label className="block text-xs font-bold text-gray-600 mb-1">
-              Nome do Adicional
+              Opção
             </label>
             <input
               type="text"
@@ -390,7 +390,7 @@ export default function GerenciarCardapioPage() {
             {isMutating ? (
               <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
             ) : (
-              "Criar Adicional"
+              "Criar Opção"
             )}
           </button>
         </form>
@@ -398,7 +398,7 @@ export default function GerenciarCardapioPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {categoriasDeAdicionais.length === 0 ? (
             <p className="text-xs text-gray-400 font-medium p-4 border border-dashed rounded-xl text-center md:col-span-2 bg-gray-50">
-              Nenhum adicional cadastrado ainda.
+              Nenhuma opção cadastrada ainda.
             </p>
           ) : (
             categoriasDeAdicionais.map((cat) => (
@@ -438,7 +438,7 @@ export default function GerenciarCardapioPage() {
                               })
                             }
                             disabled={isMutating}
-                            title="Editar adicional"
+                            title="Editar opção"
                             className="p-1.5 text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-md transition-all disabled:opacity-40"
                           >
                             <svg
@@ -561,14 +561,14 @@ export default function GerenciarCardapioPage() {
       {/* MODAL 2: EDIÇÃO DE ADICIONAL */}
       <Modal
         isOpen={editingAddon !== null}
-        title="Editar Adicional ✨"
+        title="Editar Opção ✨"
         onClose={() => !isMutating && setEditingAddon(null)}
       >
         {editingAddon && (
           <form onSubmit={handleSaveAddonEdit} className="space-y-4 my-2">
             <div>
               <label className="block text-xs font-bold text-gray-600 mb-1">
-                Nome do Adicional
+                Opção
               </label>
               <input
                 type="text"
@@ -635,7 +635,7 @@ export default function GerenciarCardapioPage() {
                 {isMutating ? (
                   <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                 ) : (
-                  "Salvar Adicional"
+                  "Salvar Opção"
                 )}
               </button>
             </div>

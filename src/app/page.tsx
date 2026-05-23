@@ -102,6 +102,16 @@ export default function CardapioPage() {
     const itemsParaEnviar = cart.map((cartItem) => {
       const itemOriginal = menu.find((m) => m.id === cartItem.itemId);
 
+      // Calcula o preço unitário deste item somado aos seus adicionais
+      const precoAdicionais = cartItem.selectedAddons.reduce(
+        (total, addonId) => {
+          const addon = addons.find((a) => a.id === addonId);
+          return total + (addon?.price || 0);
+        },
+        0,
+      );
+      const precoUnitarioFinal = (itemOriginal?.price || 0) + precoAdicionais;
+
       const nomesAdicionais = cartItem.selectedAddons
         .map((id) => addons.find((a) => a.id === id)?.name)
         .filter(Boolean)
@@ -115,6 +125,7 @@ export default function CardapioPage() {
         id: cartItem.itemId,
         name: nomeFinal,
         quantity: cartItem.quantity,
+        price: precoUnitarioFinal, // <-- Enviando o preço unitário já com adicionais inclusos
       };
     });
 
@@ -231,7 +242,7 @@ export default function CardapioPage() {
               {adicionaisDisponiveis.length > 0 && (
                 <div className="space-y-1.5 bg-gray-50 p-2.5 rounded-xl border border-gray-100">
                   <p className="text-[10px] uppercase tracking-wider font-black text-gray-400 mb-1">
-                    Adicionais:
+                    Opções:
                   </p>
                   <div className="grid grid-cols-1 gap-1">
                     {adicionaisDisponiveis.map((addon) => (
